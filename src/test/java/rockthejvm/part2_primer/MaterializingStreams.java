@@ -13,6 +13,8 @@ import static io.vavr.Patterns.$Success;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
+import akka.stream.javadsl.*;
+import io.vavr.API;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -22,10 +24,6 @@ import akka.Done;
 import akka.NotUsed;
 import akka.actor.ActorSystem;
 import akka.stream.ActorMaterializer;
-import akka.stream.javadsl.Flow;
-import akka.stream.javadsl.RunnableGraph;
-import akka.stream.javadsl.Sink;
-import akka.stream.javadsl.Source;
 import io.vavr.collection.List;
 import io.vavr.collection.Stream;
 import io.vavr.concurrent.Future;
@@ -58,6 +56,21 @@ public class MaterializingStreams {
                     Case($Failure($()),  ex -> run(() -> println("The sum of all elements could not be computed" + ex)))
             )
         );
+    }
 
+    @Test
+    public void choosingMaterializedValues() {
+        final Source<Integer, NotUsed> simpleSource = Source.range(1, 10);
+        final Flow<Integer, Integer, NotUsed> simpleFlow = Flow.fromFunction(x -> x + 1);
+        final Sink<Integer, CompletionStage<Done>> simpleSink = Sink.foreach(API::println);
+        //simpleSource.viaMat(simpleFlow, (sourceMat, flowMat) -> flowMat);
+        //simpleSource.viaMat(simpleFlow, Keep.right()); // Keep.left(), Keep.both()...
+        RunnableGraph<CompletionStage<Done>> graph = simpleSource.viaMat(simpleFlow, Keep.right()).toMat(simpleSink, Keep.right());
+        Future.fromCompletableFuture(graph.run(mat).toCompletableFuture()).onComplete(__ ->
+                Match(__).of(
+                        Case($Success($()), value -> run(() -> println("Stream processing finished."))),
+                        Case($Failure($()),  ex -> run(() -> println("stream processing failed with: " + ex)))
+                )
+        );
     }
 }
