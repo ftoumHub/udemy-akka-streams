@@ -73,4 +73,8 @@ public class MaterializingStreams {
                 )
         );
     }
+
+    public void sugars() {
+        CompletionStage<Integer> sum = Source.range(1, 10).runWith(Sink.reduce((a, b) -> a + b), mat);
+    }
 }
