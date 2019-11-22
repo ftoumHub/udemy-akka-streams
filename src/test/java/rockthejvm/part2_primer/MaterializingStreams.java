@@ -136,6 +136,6 @@ public class MaterializingStreams {
             "I love streams",
             "Materialized values are killing me"
         ));
-        
+
     }
 }
