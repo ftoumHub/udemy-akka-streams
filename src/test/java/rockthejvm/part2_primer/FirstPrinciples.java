@@ -18,6 +18,7 @@ import akka.stream.javadsl.Flow;
 import akka.stream.javadsl.RunnableGraph;
 import akka.stream.javadsl.Sink;
 import akka.stream.javadsl.Source;
+import io.vavr.API;
 import io.vavr.collection.List;
 import io.vavr.collection.Stream;
 
@@ -37,11 +38,13 @@ public class FirstPrinciples {
 
     @Test
     public void firstSource() {
+        // Une source qui émet tous les éléments de 1 à 10.
         final Source<Integer, NotUsed> source = Source.range(1, 10);
-
-        final Sink<Integer, CompletionStage<Done>> sink = Sink.foreach(i -> println(i));
-
+        // Un sink qui va afficher chaque valeur reçue
+        final Sink<Integer, CompletionStage<Done>> sink = Sink.foreach(API::println);
+        // L'expression source to sink défini un graphe
         final RunnableGraph<NotUsed> graph = source.to(sink);
+        // le graphe ne fait rien tant qu'on appelle pas la méthode run.
         graph.run(mat);
     }
 
@@ -67,6 +70,7 @@ public class FirstPrinciples {
     @Test
     public void nullsAreNotAllowed() {
         thrown.expect(NullPointerException.class);
+
         final Source<Object, NotUsed> illegalSource = Source.single(null);
         illegalSource.to(Sink.foreach(n -> println(n))).run(mat);
         // use Options instead
@@ -76,7 +80,7 @@ public class FirstPrinciples {
     public void variousKindOfSources() {
         final Source<Integer, NotUsed> finiteSource = Source.single(1);
         final Source<Integer, NotUsed> anotherFiniteSource = Source.from(List.of(1, 2, 3));
-        final Source<Integer, NotUsed> emptySource = Source.<Integer>empty();
+        final Source<Integer, NotUsed> emptySource = Source.empty();
         // do not confuse an Akka stream with a "collection" Stream
         final Source<Integer, NotUsed> infiniteSource = Source.from(Stream.from(1));
         // On peut aussi créer une source à partir d'autres choses, ex: une future
@@ -133,6 +137,9 @@ public class FirstPrinciples {
         final Sink<String, CompletionStage<Done>> nameSink = Sink.foreach(n -> println(n));
 
         //nameSource.via(longNameFlow).via(limitFlow).to(nameSink).run(mat);
-        nameSource.filter(__ -> __.length() > 5).take(2).runForeach(n -> println(n), mat);
+        nameSource
+                .filter(__ -> __.length() > 5)
+                .take(2)
+                .runForeach(n -> println(n), mat);
     }
 }

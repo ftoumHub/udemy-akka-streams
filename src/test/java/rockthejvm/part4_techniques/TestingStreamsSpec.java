@@ -13,6 +13,7 @@ import akka.NotUsed;
 import akka.actor.ActorSystem;
 import akka.stream.ActorMaterializer;
 import akka.stream.Materializer;
+import akka.stream.javadsl.Flow;
 import akka.stream.javadsl.Keep;
 import akka.stream.javadsl.Sink;
 import akka.stream.javadsl.Source;
@@ -28,7 +29,6 @@ public class TestingStreamsSpec {
     public static void setup() {
         system = ActorSystem.create("TestingAkkaStreams");
         mat = ActorMaterializer.create(system);
-        probe = new TestKit(system); // Acteur spécial avec des capacités de test
     }
 
     @AfterClass
@@ -48,14 +48,14 @@ public class TestingStreamsSpec {
         final Sink<Integer, CompletionStage<Integer>> simpleSink = Sink.fold(0, (agg, next) -> agg + next);
 
         final CompletionStage<Integer> run = simpleSource.log("SimpleSource")
-                                                         .toMat(simpleSink, Keep.right()).run(mat);
+                .toMat(simpleSink, Keep.right()).run(mat);
         int result = run.toCompletableFuture().join();
         assertEquals(55, result);
     }
 
     @Test
     public void integrateWithTestActorsViaMaterializedValues() {
-
+        probe = new TestKit(system); // Acteur spécial avec des capacités de test
         final Source<Integer, NotUsed> simpleSource = Source.range(0, 10);
         final Sink<Integer, CompletionStage<Integer>> simpleSink = Sink.fold(0, (agg, next) -> agg + next);
 
@@ -63,5 +63,20 @@ public class TestingStreamsSpec {
 
         akka.pattern.Patterns.pipe(toScala(future), system.dispatcher()).to(probe.getRef());
         probe.expectMsg(55);
+    }
+
+    @Test
+    public void integrateWithATestActorBasedSink() {
+        probe = new TestKit(system); // Acteur spécial avec des capacités de test
+        final Source<Integer, NotUsed> simpleSource = Source.range(0, 10);
+        final Flow<Integer, Integer, NotUsed> flow = // 0, 1, 3, 6, 10, 15
+                Flow.<Integer>create().scan(0, (agg, next) -> agg + next);
+        final Source<Integer, NotUsed> streamUnderTest = simpleSource.via(flow);
+
+        final Sink<Integer, NotUsed> probeSink = Sink.actorRef(probe.getRef(), "CompletionMessage");
+        streamUnderTest
+                .log("StreamUnderTest")
+                .to(probeSink).run(mat);
+        probe.expectMsgAllOf(0, 0, 1, 3, 6, 10, 15, 21, 28, 36, 45, 55);
     }
 }
