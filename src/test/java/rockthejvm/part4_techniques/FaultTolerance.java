@@ -18,6 +18,12 @@ public class FaultTolerance {
     ActorSystem system;
     ActorMaterializer mat;
 
+    @Before
+    public void setup() {
+        system = ActorSystem.create("FaultTolerance");
+        mat = ActorMaterializer.create(system);
+    }
+
     final Function<Integer, Integer> faultyFunction = e -> {
         if (e == 6) {
             throw new RuntimeException();
@@ -25,12 +31,6 @@ public class FaultTolerance {
             return e;
         }
     };
-
-    @Before
-    public void setup() {
-        system = ActorSystem.create("FaultTolerance");
-        mat = ActorMaterializer.create(system);
-    }
 
     @Test // 1 - logging
     public void logging(){

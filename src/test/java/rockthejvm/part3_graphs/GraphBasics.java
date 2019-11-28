@@ -1,5 +1,8 @@
 package rockthejvm.part3_graphs;
 
+import static io.vavr.API.println;
+
+import java.util.Random;
 import java.util.concurrent.CompletionStage;
 
 import org.junit.Before;
@@ -16,11 +19,14 @@ import akka.stream.UniformFanOutShape;
 import akka.stream.javadsl.Broadcast;
 import akka.stream.javadsl.Flow;
 import akka.stream.javadsl.GraphDSL;
+import akka.stream.javadsl.Partition;
 import akka.stream.javadsl.RunnableGraph;
 import akka.stream.javadsl.Sink;
 import akka.stream.javadsl.Source;
 import akka.stream.javadsl.Zip;
 import io.vavr.API;
+import io.vavr.collection.List;
+import lombok.AllArgsConstructor;
 
 public class GraphBasics {
 
@@ -34,7 +40,7 @@ public class GraphBasics {
     }
 
     @Test
-    public void firstGraph() {
+    public void twoInputsOneOutputGraph() {
         final Source<Integer, NotUsed> input = Source.range(1, 1000);
         final Flow<Integer, Integer, NotUsed> incrementer = Flow.<Integer>create().map(x -> x + 1);// hard computation
         final Flow<Integer, Integer, NotUsed> multiplier = Flow.<Integer>create().map(x -> x * 10);// hard computation
@@ -61,6 +67,33 @@ public class GraphBasics {
 
                                     return ClosedShape.getInstance();
                                 })
+        );
+        graph.run(mat);
+    }
+
+    @Test
+    public void oneInputTwoOutputsGraph() {
+
+        @AllArgsConstructor
+        class Apple{ Boolean bad; }
+
+        final Sink<Apple, CompletionStage<Done>> badApples = Sink.foreach(p -> println("bad apple"));
+        final Sink<Apple, CompletionStage<Done>> goodApples = Sink.foreach(p -> println("good apple"));
+        final Source<Apple, NotUsed> apples = Source.from(List.fill(10, () -> new Apple(new Random().nextBoolean())));
+
+        final RunnableGraph<NotUsed> graph = RunnableGraph.fromGraph(
+                GraphDSL.create(apples, (builder, sourceShape) -> {
+                            final UniformFanOutShape<Apple, Apple> partition = builder.add(Partition.create(2, apple -> apple.bad ? 1 : 0));
+
+                            builder.from(sourceShape)
+                                    .toFanOut(partition)
+                                    .from(partition.out(0))
+                                    .to(builder.add(badApples))
+                                    .from(partition.out(1))
+                                    .to(builder.add(goodApples));
+
+                            return ClosedShape.getInstance();
+                        })
         );
         graph.run(mat);
     }
