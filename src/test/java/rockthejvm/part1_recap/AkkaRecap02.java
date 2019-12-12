@@ -6,6 +6,8 @@ import akka.actor.ActorSystem;
 import akka.actor.Props;
 import akka.io.Udp;
 
+import static io.vavr.API.println;
+
 /**
  * Communication entre acteurs.
  */
@@ -45,21 +47,21 @@ public class AkkaRecap02 {
     public Receive createReceive() {
       return receiveBuilder()
               .matchEquals(SendANewCat.class, m -> {
-                  System.out.println("GOD: Go!, you have seven lives");
+                  println("GOD: Go!, you have seven lives");
                   indulged.tell(LiveALife.class, getSelf());
               })
               .matchEquals(LifeSpended.class, m -> {
                   if (LifeSpended.remaining == 0){
-                    System.out.println("GOD: Time to Return!");
+                    println("GOD: Time to Return!");
                     indulged.tell(BackToHeaven.class, getSelf());
                     getContext().stop(getSelf());
                   }
                   else {
-                    System.out.println("GOD: one live spent, " + LifeSpended.remaining + " remaining.");
+                    println("GOD: one live spent, " + LifeSpended.remaining + " remaining.");
                     indulged.tell(LiveALife.class, getSelf());
                   }
               })
-              .matchAny(m -> System.out.println("GOD: Sorry, I don't understand"))
+              .matchAny(m -> println("GOD: Sorry, I don't understand"))
               .build();
     }
   }
@@ -72,18 +74,18 @@ public class AkkaRecap02 {
     public Receive createReceive() {
       return receiveBuilder()
               .matchEquals(LiveALife.class, m -> {
-                  System.out.println("CAT: Thanks God, I still have " + lives + " lives");
+                  println("CAT: Thanks God, I still have " + lives + " lives");
                   lives -= 1;
                   LifeSpended.remaining = lives;
                   getSender().tell(LifeSpended.class, getSelf());
               })
               .matchEquals(BackToHeaven.class, m -> {
                   if (LifeSpended.remaining == 0){
-                      System.out.println("CAT: No more lives, going to Heaven");
+                      println("CAT: No more lives, going to Heaven");
                       getContext().stop(getSelf());
                   }
               })
-              .matchAny(m -> System.out.println("CAT: Sorry, I don't understand"))
+              .matchAny(m -> println("CAT: Sorry, I don't understand"))
               .build();
     }
   }

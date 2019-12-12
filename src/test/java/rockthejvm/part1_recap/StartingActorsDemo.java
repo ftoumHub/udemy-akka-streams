@@ -2,6 +2,8 @@ package rockthejvm.part1_recap;
 
 import akka.actor.*;
 
+import static io.vavr.API.println;
+
 /**
  * Let’s look at the actor lifecycle control between actors with an example based on characters from The
  * Simpsons . Mr. Burns is the boss and has a nuclear power plant. He hires two employees, Homer Simpson
@@ -20,12 +22,12 @@ public class StartingActorsDemo {
         // we wait some office cycles
         Thread.sleep(4000);
         // we look for Frank and we fire him
-        System.out.println("Firing Frank Grimes ...");
+        println("Firing Frank Grimes ...");
         ActorSelection grimes = actorSystem.actorSelection("../user/MrBurns/FrankGrimes");
 
         // PoisonPill, an Akka special message
         grimes.tell(PoisonPill.getInstance(), ActorRef.noSender());
-        System.out.println("now Frank Grimes is fired");
+        println("now Frank Grimes is fired");
 
         //actorSystem.terminate();
     }
@@ -53,11 +55,11 @@ public class StartingActorsDemo {
             return receiveBuilder()
                     .match(Hire.class, m -> {
                         // here the boss hire personnel
-                        System.out.println(String.format("%s is about to be hired", m.personName));
+                        println(String.format("%s is about to be hired", m.personName));
                         ActorRef employee = context().actorOf(Employee.props(m.personName), m.personName);
                         employee.tell(new Name(m.personName), employee);
                     })
-                    .matchAny(m -> System.out.println("The Boss can't handle this message.")) // cas par défaut
+                    .matchAny(m -> println("The Boss can't handle this message.")) // cas par défaut
                     .build();
         }
     }
@@ -84,7 +86,7 @@ public class StartingActorsDemo {
 
         @Override
         public void postStop() throws Exception {
-            System.out.println("I'm ("+this.name+") and Mr. Burns fired me: "+ getSelf().path());
+            println("I'm ("+this.name+") and Mr. Burns fired me: "+ getSelf().path());
         }
 
         @Override
@@ -92,7 +94,7 @@ public class StartingActorsDemo {
             return receiveBuilder()
                     .match(Name.class, n -> this.name = n.name)
                     .matchAny(n ->
-                            System.out.println(String.format("The Employee %s can't handle this message.", this.name)))
+                            println(String.format("The Employee %s can't handle this message.", this.name)))
                     .build();
         }
     }

@@ -2,6 +2,8 @@ package rockthejvm.part1_recap;
 
 import akka.actor.*;
 
+import static io.vavr.API.println;
+
 /**
  * Un premier example d'acteur simple.
  *
@@ -30,12 +32,12 @@ public class AkkaRecap01 {
     @Override
     public Receive createReceive() {
       return receiveBuilder()
-              .matchEquals("en", m -> System.out.println("GoodDay"))
-              .matchEquals("es", m -> System.out.println("Buen dia"))
-              .matchEquals("fr", m -> System.out.println("Bonjour"))
-              .matchEquals("de", m -> System.out.println("Guten Tag"))
-              .matchEquals("pt", m -> System.out.println("Bom dia"))
-              .matchAny(m -> System.out.println(":(")) // cas par défaut
+              .matchEquals("en", m -> println("GoodDay"))
+              .matchEquals("es", m -> println("Buen dia"))
+              .matchEquals("fr", m -> println("Bonjour"))
+              .matchEquals("de", m -> println("Guten Tag"))
+              .matchEquals("pt", m -> println("Bom dia"))
+              .matchAny(m -> println(":(")) // cas par défaut
               .build();
     }
   }

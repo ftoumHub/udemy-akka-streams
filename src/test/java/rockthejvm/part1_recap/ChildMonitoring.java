@@ -2,6 +2,8 @@ package rockthejvm.part1_recap;
 
 import akka.actor.*;
 
+import static io.vavr.API.println;
+
 /**
  * Created by Georges on 29/01/2019.
  */
@@ -16,7 +18,7 @@ public class ChildMonitoring {
         @Override
         public Receive createReceive() {
             return receiveBuilder()
-                    .matchAny(m -> System.out.println("Child received a message"))
+                    .matchAny(m -> println("Child received a message"))
                     .build();
         }
     }
@@ -33,8 +35,8 @@ public class ChildMonitoring {
         @Override
         public Receive createReceive() {
             return receiveBuilder()
-                    .match(Terminated.class, terminated -> System.out.println("This will not end here -_-"))
-                    .matchAny(m -> System.out.println("Dad received a message"))
+                    .match(Terminated.class, terminated -> println("This will not end here -_-"))
+                    .matchAny(m -> println("Dad received a message"))
                     .build();
         }
     }
@@ -47,7 +49,7 @@ public class ChildMonitoring {
 
         child.tell(PoisonPill.getInstance(), ActorRef.noSender());
 
-        System.out.println("Revenge!");
+        println("Revenge!");
         system.terminate();
     }
 }

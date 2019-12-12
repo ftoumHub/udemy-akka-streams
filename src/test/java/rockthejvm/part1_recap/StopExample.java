@@ -5,6 +5,8 @@ import akka.actor.ActorRef;
 import akka.actor.ActorSystem;
 import akka.actor.Props;
 
+import static io.vavr.API.println;
+
 /**
  * The following code shows how to kill actors.
  * It is a very violent way; discretion is advised. Normally, if you
@@ -28,8 +30,8 @@ public class StopExample {
         @Override
         public Receive createReceive() {
             return receiveBuilder()
-                    .match(String.class, s -> System.out.println("Message Received : " + s))
-                    .matchAny(m -> System.out.println("What?"))
+                    .match(String.class, s -> println("Message Received : " + s))
+                    .matchAny(m -> println("What?"))
                     .build();
         }
     }
