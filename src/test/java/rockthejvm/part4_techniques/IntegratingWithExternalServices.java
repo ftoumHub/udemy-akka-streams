@@ -22,22 +22,22 @@ import lombok.AllArgsConstructor;
 
 public class IntegratingWithExternalServices {
 
+    // example: simplified PagerDuty
+    @AllArgsConstructor
+    class PagerEvent{ String application; String description; Date date; }
+
+    final Source<PagerEvent, NotUsed> eventSource = Source.from(List.of(
+            new PagerEvent("AkkaInfra", "Infrastructure broke", new Date()),
+            new PagerEvent("FastDataPipeline", "Illegal elements in the data pipeline", new Date()),
+            new PagerEvent("AkkaInfra", "A service stopped responding", new Date()),
+            new PagerEvent("SuperFrontend", "A button doesn't work", new Date())
+    ));
+
     public static void main(String[] args) {
 
         ActorSystem system = ActorSystem.create("IntegratingWithExternalServices");
         //final MessageDispatcher dispatcher = system.dispatchers().lookup("dedicated-dispatcher");
         ActorMaterializer mat = ActorMaterializer.create(system);
-
-        // example: simplified PagerDuty
-        @AllArgsConstructor
-        class PagerEvent{ String application; String description; Date date; }
-
-        final Source<PagerEvent, NotUsed> eventSource = Source.from(List.of(
-                new PagerEvent("AkkaInfra", "Infrastructure broke", new Date()),
-                new PagerEvent("FastDataPipeline", "Illegal elements in the data pipeline", new Date()),
-                new PagerEvent("AkkaInfra", "A service stopped responding", new Date()),
-                new PagerEvent("SuperFrontend", "A button doesn't work", new Date())
-        ));
 
         class PagerService {
             private List<String> engineers = List.of("Daniel", "John", "Lady Gaga");
@@ -63,7 +63,8 @@ public class IntegratingWithExternalServices {
             }
         }
 
-        final Source<PagerEvent, NotUsed> infraEvents = eventSource.filter(__ -> __.application.equals("AkkaInfra"));
+        final Source<PagerEvent, NotUsed> infraEvents = new IntegratingWithExternalServices()
+                .eventSource.filter(__ -> __.application.equals("AkkaInfra"));
         final Source<String, NotUsed> pagedEngineersEmails =
                 infraEvents.mapAsync(4, event -> new PagerService().processEvent(event));
         // guarantees the relative order of elements
