@@ -1,41 +1,37 @@
 package rockthejvm.part2_primer;
 
-import static io.vavr.API.$;
-import static io.vavr.API.Case;
-import static io.vavr.API.Match;
-import static io.vavr.API.println;
-import static io.vavr.API.run;
-import static io.vavr.Patterns.$Failure;
-import static io.vavr.Patterns.$Left;
-import static io.vavr.Patterns.$Right;
-import static io.vavr.Patterns.$Success;
-
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
-
-import akka.stream.javadsl.*;
-import io.vavr.API;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.ExpectedException;
-
 import akka.Done;
 import akka.NotUsed;
 import akka.actor.ActorSystem;
 import akka.stream.ActorMaterializer;
+import akka.stream.javadsl.*;
+import io.vavr.API;
 import io.vavr.collection.List;
-import io.vavr.collection.Stream;
 import io.vavr.concurrent.Future;
+import org.junit.Before;
+import org.junit.Test;
+
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
+
+import static io.vavr.API.*;
+import static io.vavr.Patterns.$Failure;
+import static io.vavr.Patterns.$Success;
 
 /**
- * Cette classe permet d'apprendre à "extraire" des valeurs
- * d'un stream en cours d'exécution.
+ * <h1>Materializing Streams</h1>
  *
- * On appelle la valeur retournée par l'exécution d'un graphe
- * sa valeur matérialisée.
+ * <p>L'objectif de cette classe est d'apprendre à "extraire" des valeurs
+ * d'un stream en cours d'exécution.</p>
  *
- * Matérialiser un graphe implique de matérialiser tous les composants de ce graphe.
+ * <p>Un graphe est statique tant qu'il n'a pas été exécuté via la méthode run</p>
+ *
+ * <p><code>val graph = source.via(flow).to(sink)</code></p>
+ * <p><code>val result = graph.run()</code></p>
+ *
+ * <p>On appelle la valeur retournée par l'exécution d'un graphe
+ * sa valeur matérialisée (result).Matérialiser un graphe implique de matérialiser
+ * tous les composants de ce graphe.</p>
  */
 public class MaterializingStreams {
 
@@ -116,26 +112,61 @@ public class MaterializingStreams {
         Flow.<Integer>create().map(x -> 2 * x).runWith(simpleSource, simpleSink, mat);
     }
 
-    /**
-     * - return the last element out of a source (use Sink.last)
-     * - compute the total word count out of a stream of sentences
-     *   - map, fold, reduce
-     */
+
     @Test
     public void exercise() {
-        final CompletionStage<Integer> lastElFut1 = Source.range(1, 10).toMat(Sink.last(), Keep.right()).run(mat);
-        final Integer lastEl1 = lastElFut1.toCompletableFuture().join();
-        println(lastEl1);
+        // Pour renvoyer le dernier élément d'une source, on peut utiliser Sink.last()
+        final CompletableFuture<Integer> f1 = Source.range(1, 10).toMat(Sink.last(), Keep.right()).run(mat).toCompletableFuture();
+        final CompletableFuture<Integer> lastElFut2 = Source.range(1, 10).runWith(Sink.last(), mat).toCompletableFuture();
 
-        final CompletionStage<Integer> lastElFut2 = Source.range(1, 10).runWith(Sink.last(), mat);
-        final Integer lastEl2 = lastElFut2.toCompletableFuture().join();
-        println(lastEl2);
+        println(f1.join());
+        println(lastElFut2.join());
 
-        Source.from(List.of(
-            "Akka is awesome",
-            "I love streams",
-            "Materialized values are killing me"
+        // On veut maintenant compter le nombre de mots dans un flux de phrases.
+        // on peut utiliser les opérateurs suivants :
+        // - map    : disponible sur un Flow
+        // - fold   : disponible sur un Flow et un Sink
+        // - reduce : disponible sur un Flow et un Sink
+        final Source<String, NotUsed> sentenceSource = Source.from(List.of(
+                "Akka is awesome",
+                "I love streams",
+                "Materialized values are killing me"
         ));
 
+        final Sink<String, CompletionStage<Integer>> wordCountSink =
+                Sink.fold(0, (currentWords, newSentence) -> currentWords + newSentence.split(" ").length);
+
+        final CompletableFuture<Integer> g1 = sentenceSource.toMat(wordCountSink, Keep.right()).run(mat).toCompletableFuture();
+        println("Nb de mots dans le flux: " + g1.join());
+
+        // ce qui est équivalent à :
+        final CompletionStage<Integer> g2 = sentenceSource.runWith(wordCountSink, mat);
+        final CompletionStage<Integer> g3 = sentenceSource.runFold(0, (currentWords, newSentence) -> currentWords + newSentence.split(" ").length, mat);
+
+        // Avec un Flow on peut écrire :
+        final Flow<String, Integer, NotUsed> wordCountFlow =
+                Flow.<String>create().fold(0, (currentWords, newSentence) -> currentWords + newSentence.split(" ").length);
+
+        final CompletableFuture<Integer> g4 = sentenceSource.via(wordCountFlow).toMat(Sink.head(), Keep.right()).run(mat).toCompletableFuture();
+        final CompletableFuture<Integer> g5 = sentenceSource.viaMat(wordCountFlow, Keep.left()).toMat(Sink.head(), Keep.right()).run(mat).toCompletableFuture();
+        final CompletableFuture<Integer> g6 = sentenceSource.via(wordCountFlow).runWith(Sink.head(), mat).toCompletableFuture();
+        final CompletableFuture<Integer> g7 = wordCountFlow.runWith(sentenceSource, Sink.head(), mat).second().toCompletableFuture();
     }
+
+    /**
+     * <h1>Recap</h1>
+     *
+     * <b>Materializing a graph = materializing <i>all</i> components</b>
+     * <ul>
+     * <li>each component produces a materialized value when run</li>
+     * <li>the graph produces a <u>single</u> materialized value</li>
+     * <li>our job to choose which one to pick</li>
+     *</ul>
+     *
+     * <b>A component can materialize multiple times</b>
+     * <p></p>
+     *
+     * <h2><font color="red">A materialized value can ben ANYTHING</font></h2>
+     */
+    public void recap(){}
 }
