@@ -1,9 +1,7 @@
 package rockthejvm.part4_techniques;
 
-import akka.Done;
 import akka.NotUsed;
 import akka.actor.ActorSystem;
-import akka.japi.function.Function;
 import akka.stream.ActorMaterializer;
 import akka.stream.javadsl.RestartSource;
 import akka.stream.javadsl.Sink;
