@@ -17,6 +17,7 @@ import java.util.concurrent.CompletionStage;
 import static io.vavr.API.*;
 import static io.vavr.Patterns.$Failure;
 import static io.vavr.Patterns.$Success;
+import static io.vavr.concurrent.Future.fromCompletableFuture;
 
 /**
  * <h1>Materializing Streams</h1>
@@ -44,15 +45,25 @@ public class MaterializingStreams {
         mat = ActorMaterializer.create(system);
     }
 
+    /**
+     * La valeur retournée par l'appel à la methode run est la valeur matérialisée du graphe.
+     */
     @Test
     public void simpleGraph() {
-        final RunnableGraph<NotUsed> simpleGraph = Source.range(1, 10).to(Sink.foreach(i -> println(i)));
-        // La valeur retournée par l'appel à la methode est la valeur matérialisée du graphe.
-        // Par défaut le graphe retourne la valeur matérialisée de l'élément de gauche
-        // cad la valeur de Source.range(1, 10), d'où le type NotUsed.
-        final NotUsed simpleMaterializedValue = simpleGraph.run(mat);
+        // Par défaut le graphe retourne la valeur matérialisée de l'élément de gauche (à gauche de la méthode to(..)),
+        // cad la valeur de la source, ici NotUsed
+        final RunnableGraph<NotUsed> leftValGraph = Source.range(1, 10).to(Sink.foreach(API::println));
+        // Dans ce cas la valeur matérialisée par ce graphe est NotUsed, équivalent à Void ou Unit en scala
+        final NotUsed leftMaterializedValue = leftValGraph.run(mat);
+
+        // On peut également choisir de conserver la valeur matérialisée de droite (à droite de la méthode toMat(...) comme ceci:
+        final RunnableGraph<CompletionStage<Done>> rightValGraph = Source.range(1, 10).toMat(Sink.foreach(API::println), Keep.right());
+        final CompletionStage<Done> rightMaterializedValue = rightValGraph.run(mat);
     }
 
+    /**
+     * Au lieu de NotUsed on peut retourner une valeur suite à l'exécution d'un graphe.
+     */
     @Test
     public void firstMaterializedValue() {
         final Source<Integer, NotUsed> source = Source.range(1, 10);
@@ -61,10 +72,10 @@ public class MaterializingStreams {
         // En exécutant le graphe, on va avoir accès à la somme des éléments calculés par le sink
         final CompletionStage<Integer> sumFuture = source.runWith(sink, mat);
 
-        Future.fromCompletableFuture(sumFuture.toCompletableFuture()).onComplete(tryInt ->
+        fromCompletableFuture(sumFuture.toCompletableFuture()).onComplete(tryInt ->
             Match(tryInt).of(
                     Case($Success($()), sum -> run(() -> println("The sum of all elements is: " + sum))),
-                    Case($Failure($()), ex  -> run(() -> println("The sum of all elements could not be computed" + ex)))
+                    Case($Failure($()), ex  -> run(() -> println("The sum of all elements could not be computed: " + ex)))
             )
         );
     }
@@ -86,7 +97,7 @@ public class MaterializingStreams {
         RunnableGraph<CompletionStage<Done>> graph = simpleSource.viaMat(simpleFlow, Keep.right())
                                                                  .toMat(simpleSink, Keep.right());
 
-        Future.fromCompletableFuture(graph.run(mat).toCompletableFuture()).onComplete(__ ->
+        fromCompletableFuture(graph.run(mat).toCompletableFuture()).onComplete(__ ->
                 Match(__).of(
                         Case($Success($()), ___ -> run(() -> println("Stream processing finished."))),
                         Case($Failure($()), ex  -> run(() -> println("stream processing failed with: " + ex)))
