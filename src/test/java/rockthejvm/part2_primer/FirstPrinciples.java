@@ -1,15 +1,5 @@
 package rockthejvm.part2_primer;
 
-import static io.vavr.API.println;
-
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
-
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.ExpectedException;
-
 import akka.Done;
 import akka.NotUsed;
 import akka.actor.ActorSystem;
@@ -21,6 +11,16 @@ import akka.stream.javadsl.Source;
 import io.vavr.API;
 import io.vavr.collection.List;
 import io.vavr.collection.Stream;
+import libs.Flows;
+import org.junit.Before;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.ExpectedException;
+
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
+
+import static io.vavr.API.println;
 
 public class FirstPrinciples {
 
@@ -121,6 +121,16 @@ public class FirstPrinciples {
         mapSource.runForeach(n -> println(n), mat);
 
         // OPERATORS = components
+    }
+
+    @Test
+    public void groupingFlows() {
+
+        final Source<Integer, NotUsed> source = Source.range(1, 14);
+
+        final Flow<Integer, List<Integer>, NotUsed> groupedIntegers = Flows.groupFlow(4);
+
+        source.via(groupedIntegers).runWith(Sink.foreach(i -> println(i.size())), mat);
     }
 
     /**

@@ -76,4 +76,29 @@ public class OpenGraphs {
         );
         firstSource.to(sinkGraph).run(mat);
     }
+
+    /**
+     * Challenge - complex flow?
+     * Write your own flow that's composed of two other flows
+     * - one that adds 1 to a number
+     * - one that does number * 10
+     */
+    @Test
+    public void creatingAComplexFlow() {
+        final Flow<Integer, Integer, NotUsed> incrementer = Flow.<Integer>create().map(x -> x + 1);
+        final Flow<Integer, Integer, NotUsed> multiplier = Flow.<Integer>create().map(x -> x * 10);
+
+        final Flow<Integer, Integer, NotUsed> flowGraph = Flow.fromGraph(
+                GraphDSL.create(builder -> {
+                    final FlowShape<Integer, Integer> incrementerShape = builder.add(incrementer);
+                    final FlowShape<Integer, Integer> multiplierShape = builder.add(multiplier);
+
+                    builder.from(incrementerShape).via(multiplierShape);
+
+                    return FlowShape.of(incrementerShape.in(), multiplierShape.out());
+                })
+        );
+
+        Source.range(1, 10).via(flowGraph).runForeach(API::println, mat);
+    }
 }

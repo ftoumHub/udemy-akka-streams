@@ -1,14 +1,5 @@
 package rockthejvm.part3_graphs;
 
-import static io.vavr.API.println;
-
-import java.time.Duration;
-import java.util.Random;
-import java.util.concurrent.CompletionStage;
-
-import org.junit.Before;
-import org.junit.Test;
-
 import akka.Done;
 import akka.NotUsed;
 import akka.actor.ActorSystem;
@@ -17,17 +8,18 @@ import akka.stream.ActorMaterializer;
 import akka.stream.ClosedShape;
 import akka.stream.FanInShape2;
 import akka.stream.UniformFanOutShape;
-import akka.stream.javadsl.Broadcast;
-import akka.stream.javadsl.Flow;
-import akka.stream.javadsl.GraphDSL;
-import akka.stream.javadsl.Partition;
-import akka.stream.javadsl.RunnableGraph;
-import akka.stream.javadsl.Sink;
-import akka.stream.javadsl.Source;
-import akka.stream.javadsl.Zip;
+import akka.stream.javadsl.*;
 import io.vavr.API;
 import io.vavr.collection.List;
 import lombok.AllArgsConstructor;
+import org.junit.Before;
+import org.junit.Test;
+
+import java.util.Random;
+import java.util.concurrent.CompletionStage;
+
+import static io.vavr.API.println;
+import static java.time.Duration.ofSeconds;
 
 public class GraphBasics {
 
@@ -142,7 +134,7 @@ public class GraphBasics {
         /**
          * exercise 2: balance
          */
-        Source<Integer, NotUsed> fastSource = input.throttle(5, Duration.ofSeconds(1));
-        Source<Integer, NotUsed> slowSource = input.throttle(2, Duration.ofSeconds(1));
+        Source<Integer, NotUsed> fastSource = input.throttle(5, ofSeconds(1));
+        Source<Integer, NotUsed> slowSource = input.throttle(2, ofSeconds(1));
     }
 }
