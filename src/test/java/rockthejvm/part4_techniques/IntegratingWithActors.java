@@ -7,6 +7,7 @@ import akka.stream.javadsl.Flow;
 import akka.stream.javadsl.Sink;
 import akka.stream.javadsl.Source;
 import akka.util.Timeout;
+import io.vavr.API;
 
 import java.util.concurrent.TimeUnit;
 
@@ -28,14 +29,10 @@ public class IntegratingWithActors {
         // l'acteur (envoi d'un message et attente d'une réponse sous la forme d'une Future avec timeout)
         // Le facteur de parallélisation définit le nb de messages possibles dans la mailbox avant
         // que l'acteur déclenche le mécanisme de backpressure
-        // Etant donnée que les futures peuvent retourner n'import quel type, on indique le type
-        // qui nous intéresse, ici Integer
+        // Etant donnée que les futures peuvent retourner n'importe quel type, on indique le type
+        // qui nous intéresse, ici, Integer.
         final Flow<Integer, Integer, NotUsed> actorBasedFlow =
-                Flow.<Integer>create().ask(
-                        4,
-                        simpleActor,
-                        Integer.class,
-                        new Timeout(2, TimeUnit.SECONDS));
+                Flow.<Integer>create().ask(4, simpleActor, Integer.class, new Timeout(2, TimeUnit.SECONDS));
 
         numbersSource.via(actorBasedFlow).to(Sink.ignore()).run(mat);
         // equivalent à :
@@ -43,7 +40,6 @@ public class IntegratingWithActors {
     }
 
     private static class SimpleActor extends AbstractLoggingActor {
-
         @Override
         public Receive createReceive() {
             return receiveBuilder()
@@ -53,9 +49,9 @@ public class IntegratingWithActors {
                     })
                     .match(Integer.class, n -> {
                         log().info("Just received an integer " + n);
-                        getSender().tell(n, getSelf());
+                        sender().tell(n, self());
                     })
-                    .matchAny(__ -> println(__))
+                    .matchAny(API::println)
                     .build();
         }
 
