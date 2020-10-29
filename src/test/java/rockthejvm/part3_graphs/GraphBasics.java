@@ -4,16 +4,11 @@ import akka.Done;
 import akka.NotUsed;
 import akka.actor.ActorSystem;
 import akka.japi.Pair;
-import akka.stream.ActorMaterializer;
-import akka.stream.ClosedShape;
-import akka.stream.FanInShape2;
-import akka.stream.UniformFanOutShape;
+import akka.stream.*;
 import akka.stream.javadsl.*;
 import io.vavr.API;
 import io.vavr.collection.List;
 import lombok.AllArgsConstructor;
-import org.junit.Before;
-import org.junit.Test;
 
 import java.util.Random;
 import java.util.concurrent.CompletionStage;
@@ -21,19 +16,26 @@ import java.util.concurrent.CompletionStage;
 import static io.vavr.API.println;
 import static java.time.Duration.ofSeconds;
 
+/**
+ * write complex Akka Streams Graph
+ * familiarize with the Graph DSL
+ * non-linear component:
+ * - fan-out (single input and multiple outputs)
+ * - fan-in  (multiple inputs and single output)
+ */
 public class GraphBasics {
 
-    ActorSystem system;
-    ActorMaterializer mat;
+    private static final ActorSystem system = ActorSystem.create("GraphBasics");
+    private static final ActorMaterializer mat = ActorMaterializer.create(system);
 
-    @Before
-    public void setup() {
-        system = ActorSystem.create("GraphBasics");
-        mat = ActorMaterializer.create(system);
+    public static void main(String[] args) {
+        //twoInputsOneOutputGraph();
+        //oneInputTwoOutputsGraph();
+        //exercise1_feedASourceIntoTwoSinks();
+        exercise2_balance();
     }
 
-    @Test
-    public void twoInputsOneOutputGraph() {
+    private static void twoInputsOneOutputGraph() {
         // Pour une source d'entier de 1 à 1000, on veut générer une paire d'entier
         final Source<Integer, NotUsed> input = Source.range(1, 1000);
 
@@ -67,11 +69,11 @@ public class GraphBasics {
                                     return ClosedShape.getInstance();
                                 })
         );
-        graph.run(mat);
+        graph.run(mat)
+                .whenComplete((d,t) -> system.terminate());
     }
 
-    @Test
-    public void oneInputTwoOutputsGraph() {
+    private static void oneInputTwoOutputsGraph() {
 
         @AllArgsConstructor
         class Apple{ Boolean bad; }
@@ -97,13 +99,13 @@ public class GraphBasics {
                         })
         );
         graph.run(mat);
+        system.terminate();
     }
 
     /**
-     * exercise 1: feed a source into 2 sinks at the same time
+     * exercise 1: feed a source into 2 sinks at the same time (hint: use a broadcast)
      */
-    @Test
-    public void sourceIntoTwoSinks() {
+    private static void exercise1_feedASourceIntoTwoSinks() {
 
         final Source<Integer, NotUsed> input = Source.range(1, 1000);
 
@@ -118,23 +120,66 @@ public class GraphBasics {
                             final UniformFanOutShape<Integer, Integer> broadcast = builder.add(Broadcast.create(2));
 
                             // step 3 - on relie les composants entre eux
-                            builder.from(sourceShape)
-                                    .toFanOut(broadcast)
-                                    .from(broadcast.out(0))
-                                    .to(builder.add(firstSink))
-                                    .from(broadcast.out(1))
-                                    .to(builder.add(secondSink));
+                            builder.from(sourceShape).toFanOut(broadcast)
+                                    .from(broadcast).to(builder.add(firstSink))
+                                    .from(broadcast).to(builder.add(secondSink));
+
+                            //        .from(broadcast.out(0)).to(builder.add(firstSink))
+                            //        .from(broadcast.out(1)).to(builder.add(secondSink));
 
                             // step 4 - return a closed shape
                             return ClosedShape.getInstance();
                         })
         );
         sourceToTwoSinksGraph.run(mat);
+        //system.terminate();
+    }
 
-        /**
-         * exercise 2: balance
-         */
-        Source<Integer, NotUsed> fastSource = input.throttle(5, ofSeconds(1));
-        Source<Integer, NotUsed> slowSource = input.throttle(2, ofSeconds(1));
+    /**
+     * exercise 2: balance
+     */
+    private static void exercise2_balance() {
+
+        final Source<Integer, NotUsed> input = Source.range(1, 1000);
+
+        final Source<Integer, NotUsed> fastSource = input.throttle(5, ofSeconds(1));
+        final Source<Integer, NotUsed> slowSource = input.throttle(2, ofSeconds(1));
+
+        /**final Sink<Integer, CompletionStage<Integer>> sink1 = Sink.fold(0, (count, __) -> {
+            println("Sink 1 number of elements: " + count);
+            return count + 1;
+        });
+
+        final Sink<Integer, CompletionStage<Integer>> sink2 = Sink.fold(0, (count, __) -> {
+            println("Sink 2 number of elements: " + count);
+            return count + 1;
+        });*/
+
+        final Sink<Integer, CompletionStage<Done>> sink1 = Sink.foreach(c -> println("Sink 1 number of elements: " + c));
+
+        final Sink<Integer, CompletionStage<Done>> sink2 = Sink.foreach(c -> println("Sink 2 number of elements: " + c));
+
+        // step 1
+        final RunnableGraph<Pair<NotUsed, NotUsed>> balanceGraph = RunnableGraph.fromGraph(
+                GraphDSL.create(fastSource, slowSource, Keep.both(),
+                        (builder, out1, out2) -> {
+                            // step 2 - declare components
+                            final UniformFanInShape<Integer, Integer> merge = builder.add(Merge.create(2));
+                            final UniformFanOutShape<Integer, Integer> balance = builder.add(Balance.create(2));
+
+                            // step 3 - on relie les composants entre eux
+                            builder.from(out1).toFanIn(merge);
+                            builder.from(out2).toInlet(merge.in(1));
+
+                            builder.from(merge).viaFanOut(balance);
+
+                            builder.from(balance).to(builder.add(sink1));
+                            builder.from(balance).to(builder.add(sink2));
+
+                            // step 4 - return a closed shape
+                            return ClosedShape.getInstance();
+                        })
+        );
+        balanceGraph.run(mat);
     }
 }
