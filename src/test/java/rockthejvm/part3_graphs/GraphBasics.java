@@ -17,7 +17,9 @@ import static io.vavr.API.println;
 import static java.time.Duration.ofSeconds;
 
 /**
- * write complex Akka Streams Graph
+ * Dans cette leçon, on va créer des graphs complexes à l'aide d'Akka Streams.
+ * Ces graphs seront executables (runnable).
+ *
  * familiarize with the Graph DSL
  * non-linear component:
  * - fan-out (single input and multiple outputs)
