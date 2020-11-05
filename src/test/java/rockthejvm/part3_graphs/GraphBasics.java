@@ -164,14 +164,14 @@ public class GraphBasics {
         // step 1
         final RunnableGraph<Pair<NotUsed, NotUsed>> balanceGraph = RunnableGraph.fromGraph(
                 GraphDSL.create(fastSource, slowSource, Keep.both(),
-                        (builder, out1, out2) -> {
+                        (builder, sourceShape1, sourceShape2) -> {
                             // step 2 - declare components
                             final UniformFanInShape<Integer, Integer> merge = builder.add(Merge.create(2));
                             final UniformFanOutShape<Integer, Integer> balance = builder.add(Balance.create(2));
 
                             // step 3 - on relie les composants entre eux
-                            builder.from(out1).toFanIn(merge);
-                            builder.from(out2).toInlet(merge.in(1));
+                            builder.from(sourceShape1).toFanIn(merge);
+                            builder.from(sourceShape2).toInlet(merge.in(1));
 
                             builder.from(merge).viaFanOut(balance);
 
