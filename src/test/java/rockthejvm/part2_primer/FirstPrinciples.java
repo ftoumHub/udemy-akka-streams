@@ -20,7 +20,10 @@ import org.junit.rules.ExpectedException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
+import static io.vavr.API.List;
 import static io.vavr.API.println;
+import static java.time.temporal.ChronoUnit.MILLIS;
+import static libs.Await.await;
 
 public class FirstPrinciples {
 
@@ -46,6 +49,35 @@ public class FirstPrinciples {
         final RunnableGraph<NotUsed> graph = source.to(sink);
         // le graphe ne fait rien tant qu'on appelle pas la méthode run.
         graph.run(mat);
+
+        await(500, MILLIS);
+    }
+
+    @Test
+    public void sourceFlatMapConcat() throws InterruptedException {
+        // On a 2 sources:
+        final Source<Integer, NotUsed> source1 = Source.range(1, 3);
+        final Source<Integer, NotUsed> source2 = Source.range(1, 10);
+
+        final Sink<Integer, CompletionStage<Done>> sink = Sink.foreach(API::println);
+
+        // Pour chaque element de source1 on émet source2
+        source1.flatMapConcat(i -> source2).to(sink).run(mat);
+
+        await(500, MILLIS);
+    }
+
+    @Test
+    public void sourceConcat() {
+
+        final Source<Integer, NotUsed> deux = Source.single(2);
+        final Source<Integer, NotUsed> trois = Source.single(3);
+
+        final Sink<Integer, CompletionStage<Done>> sink = Sink.foreach(API::println);
+
+        deux.concat(trois).to(sink).run(mat);
+
+        await(500, MILLIS);
     }
 
     @Test
@@ -54,7 +86,7 @@ public class FirstPrinciples {
 
         final Flow<Integer, Integer, NotUsed> flow = Flow.fromFunction(x -> x + 1);
 
-        final Sink<Integer, CompletionStage<Done>> sink = Sink.foreach(i -> println(i));
+        final Sink<Integer, CompletionStage<Done>> sink = Sink.foreach(API::println);
 
         // une source connectée à un flow retourne une nouvelle source
         final Source<Integer, NotUsed> sourceWithFlow = source.via(flow);
@@ -65,6 +97,8 @@ public class FirstPrinciples {
         sourceWithFlow.to(sink).run(mat);
         source.to(flowWithSink).run(mat);
         source.via(flow).to(sink).run(mat);
+
+        await(1500, MILLIS);
     }
 
     @Test
@@ -72,14 +106,14 @@ public class FirstPrinciples {
         thrown.expect(NullPointerException.class);
 
         final Source<Object, NotUsed> illegalSource = Source.single(null);
-        illegalSource.to(Sink.foreach(n -> println(n))).run(mat);
+        illegalSource.to(Sink.foreach(API::println)).run(mat);
         // use Options instead
     }
 
     @Test
     public void variousKindOfSources() {
         final Source<Integer, NotUsed> finiteSource = Source.single(1);
-        final Source<Integer, NotUsed> anotherFiniteSource = Source.from(List.of(1, 2, 3));
+        final Source<Integer, NotUsed> anotherFiniteSource = Source.from(List(1, 2, 3));
         final Source<Integer, NotUsed> emptySource = Source.empty();
         // do not confuse an Akka stream with a "collection" Stream
         final Source<Integer, NotUsed> infiniteSource = Source.from(Stream.from(1));
@@ -90,7 +124,7 @@ public class FirstPrinciples {
     @Test
     public void sinks() {
         final Sink<Object, CompletionStage<Done>> theMostBoringSink = Sink.ignore();
-        final Sink<String, CompletionStage<Done>> foreachSink = Sink.<String>foreach(n -> println(n));
+        final Sink<String, CompletionStage<Done>> foreachSink = Sink.<String>foreach(API::println);
         // retrieves head and then closes the stream
         final Sink<Integer, CompletionStage<Integer>> headSink = Sink.<Integer>head();
         // this sink is able to compute the sum of all the elements that are passed into it.
@@ -106,7 +140,7 @@ public class FirstPrinciples {
         // NOT have flatMap
 
         final Source<Integer, NotUsed> source = Source.range(1, 10);
-        final Sink<Integer, CompletionStage<Done>> sink = Sink.foreach(i -> println(i));
+        final Sink<Integer, CompletionStage<Done>> sink = Sink.foreach(API::println);
 
         // source -> flow -> flow -> ... -> sink
         final RunnableGraph<NotUsed> doubleFlowGraph = source.via(mapFlow).via(takeFlow).to(sink);
@@ -117,8 +151,8 @@ public class FirstPrinciples {
         final Source<Integer, NotUsed> mapSource = Source.range(1, 10).map(x -> 2 * x);
 
         // run streams directly
-        //mapSource.to(Sink.foreach(n -> println(n))).run(mat);
-        mapSource.runForeach(n -> println(n), mat);
+        //mapSource.to(Sink.foreach(API::println)).run(mat);
+        mapSource.runForeach(API::println, mat);
 
         // OPERATORS = components
     }
@@ -131,25 +165,29 @@ public class FirstPrinciples {
         final Flow<Integer, List<Integer>, NotUsed> groupedIntegers = Flows.groupFlow(4);
 
         source.via(groupedIntegers).runWith(Sink.foreach(i -> println(i.size())), mat);
+
+        await(500, MILLIS);
     }
 
     /**
      * Exercise: create a stream that takes the name of persons,
-     *           then you will keep the first 2 names with length > 5 characters.
+     * then you will keep the first 2 names with length > 5 characters.
      */
     @Test
     public void exercise() {
-        final List<String> names = List.of("Alice", "Bob", "Charlie", "David", "Martin", "AkkaStreams");
+        final List<String> names = List("Alice", "Bob", "Charlie", "David", "Martin", "AkkaStreams");
         final Source<String, NotUsed> nameSource = Source.from(names);
 
         final Flow<String, String, NotUsed> longNameFlow = Flow.<String>create().filter(s -> s.length() > 5);
         final Flow<String, String, NotUsed> limitFlow = Flow.<String>create().take(2);
-        final Sink<String, CompletionStage<Done>> nameSink = Sink.foreach(n -> println(n));
+        final Sink<String, CompletionStage<Done>> nameSink = Sink.foreach(API::println);
 
         //nameSource.via(longNameFlow).via(limitFlow).to(nameSink).run(mat);
         nameSource
                 .filter(__ -> __.length() > 5)
                 .take(2)
                 .runForeach(n -> println(n), mat);
+
+        await(500, MILLIS);
     }
 }
