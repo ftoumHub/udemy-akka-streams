@@ -1,7 +1,10 @@
 package rockthejvm.part4_techniques;
 
 import akka.NotUsed;
-import akka.actor.*;
+import akka.actor.AbstractLoggingActor;
+import akka.actor.ActorRef;
+import akka.actor.ActorSystem;
+import akka.actor.Props;
 import akka.stream.ActorMaterializer;
 import akka.stream.javadsl.Flow;
 import akka.stream.javadsl.Sink;
@@ -9,9 +12,9 @@ import akka.stream.javadsl.Source;
 import akka.util.Timeout;
 import io.vavr.API;
 
-import java.util.concurrent.TimeUnit;
-
-import static io.vavr.API.println;
+import static java.time.temporal.ChronoUnit.MILLIS;
+import static java.util.concurrent.TimeUnit.SECONDS;
+import static libs.Await.await;
 
 public class IntegratingWithActors {
 
@@ -32,11 +35,15 @@ public class IntegratingWithActors {
         // Etant donnée que les futures peuvent retourner n'importe quel type, on indique le type
         // qui nous intéresse, ici, Integer.
         final Flow<Integer, Integer, NotUsed> actorBasedFlow =
-                Flow.<Integer>create().ask(4, simpleActor, Integer.class, new Timeout(2, TimeUnit.SECONDS));
+                Flow.<Integer>create().ask(4, simpleActor, Integer.class, new Timeout(2, SECONDS));
 
         numbersSource.via(actorBasedFlow).to(Sink.ignore()).run(mat);
         // equivalent à :
         //numbersSource.ask(4, simpleActor, Integer.class, new Timeout(2, TimeUnit.SECONDS));
+
+        await(2000, MILLIS);
+
+        system.terminate();
     }
 
     private static class SimpleActor extends AbstractLoggingActor {

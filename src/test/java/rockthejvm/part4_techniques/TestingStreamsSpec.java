@@ -56,7 +56,7 @@ public class TestingStreamsSpec {
 
         // Ce sink va additionner les valeurs qui lui sont passé.
         // Lorsqu'il est matérialisé, il expose son resultat sous forme d'un CompletionStage de Integer
-        final Sink<Integer, CompletionStage<Integer>> simpleSink = Sink.fold(0, (agg, next) -> agg + next);
+        final Sink<Integer, CompletionStage<Integer>> simpleSink = Sink.fold(0, Integer::sum);
 
         int result = simpleSource.log("SimpleSource")
                 .toMat(simpleSink, Keep.right()).run(mat)
@@ -68,7 +68,7 @@ public class TestingStreamsSpec {
     public void integrateWithTestActorsViaMaterializedValues() {
 
         final Source<Integer, NotUsed> simpleSource = Source.range(0, 10);
-        final Sink<Integer, CompletionStage<Integer>> simpleSink = Sink.fold(0, (agg, next) -> agg + next);
+        final Sink<Integer, CompletionStage<Integer>> simpleSink = Sink.fold(0, Integer::sum);
 
         probe = new TestKit(system); // Acteur spécial avec des capacités de test
 
@@ -83,7 +83,7 @@ public class TestingStreamsSpec {
         probe = new TestKit(system); // Acteur spécial avec des capacités de test
         final Source<Integer, NotUsed> simpleSource = Source.range(0, 10);
         final Flow<Integer, Integer, NotUsed> flow = // 0, 1, 3, 6, 10, 15
-                Flow.<Integer>create().scan(0, (agg, next) -> agg + next);
+                Flow.<Integer>create().scan(0, Integer::sum);
         final Source<Integer, NotUsed> streamUnderTest = simpleSource.via(flow);
 
         final Sink<Integer, NotUsed> probeSink = Sink.actorRef(probe.getRef(), "CompletionMessage");
@@ -108,7 +108,7 @@ public class TestingStreamsSpec {
 
     @Test
     public void integrateWithStreamsTestKitSource() {
-        Sink<Integer, CompletionStage<Done>> sinkUnderTest = Sink.<Integer>foreach(i ->
+        Sink<Integer, CompletionStage<Done>> sinkUnderTest = Sink.foreach(i ->
                 Match(i).of(
                         Case($(13), __ -> new RuntimeException("bad luck!")),
                         Case($(), __ -> __)

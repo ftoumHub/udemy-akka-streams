@@ -7,19 +7,29 @@ import akka.stream.ActorAttributes;
 import akka.stream.ActorMaterializer;
 import akka.stream.javadsl.Sink;
 import akka.stream.javadsl.Source;
-import io.vavr.collection.HashMap;
 import io.vavr.collection.List;
 import io.vavr.collection.Map;
+import libs.Await;
+import libs.Flows;
 import lombok.AllArgsConstructor;
+import lombok.ToString;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Date;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
+import static io.vavr.API.List;
+import static io.vavr.API.Map;
 import static io.vavr.API.println;
 import static io.vavr.concurrent.Future.ofSupplier;
+import static java.time.temporal.ChronoUnit.MILLIS;
+import static libs.Await.await;
 
 public class IntegratingWithExternalServices {
+
+    public static Logger LOGGER = LoggerFactory.getLogger(IntegratingWithExternalServices.class);
 
     private static final ActorSystem system = ActorSystem.create("IntegratingWithExternalServices");
     //final MessageDispatcher dispatcher = system.dispatchers().lookup("dedicated-dispatcher");
@@ -27,11 +37,13 @@ public class IntegratingWithExternalServices {
 
     // example: simplified PagerDuty
     @AllArgsConstructor
-    class PagerEvent{ String application; String description; Date date; }
+    @ToString
+    static class PagerEvent{ String application; String description; Date date; }
 
     static class PagerService {
-        private List<String> engineers = List.of("Daniel", "John", "Lady Gaga");
-        private Map<String, String> emails = HashMap.of(
+
+        private List<String> engineers = List("Daniel", "John", "Lady Gaga");
+        private Map<String, String> emails = Map(
                 "Daniel", "daniel@rockthejvm.com",
                 "John", "john@rockthejvm.com",
                 "Lady Gaga", "ladygaga@rtjvm.com");
@@ -42,18 +54,15 @@ public class IntegratingWithExternalServices {
                 final String engineer = engineers.get(engineerIndex.intValue());
                 final String engineerEmail = emails.get(engineer).getOrNull();
 
-                println("Sending engineer " + engineerEmail + " a high priority notification: " + pagerEvent);
-                try {
-                    Thread.sleep(1000);
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
+                LOGGER.debug("Sending " + engineerEmail + " a high priority notification: " + pagerEvent);
+
+                await(1000, MILLIS);
                 return engineerEmail;
             }).toCompletableFuture();
         }
     }
 
-    final Source<PagerEvent, NotUsed> eventSource = Source.from(List.of(
+    static final Source<PagerEvent, NotUsed> eventSource = Source.from(List(
             new PagerEvent("AkkaInfra", "Infrastructure broke", new Date()),
             new PagerEvent("FastDataPipeline", "Illegal elements in the data pipeline", new Date()),
             new PagerEvent("AkkaInfra", "A service stopped responding", new Date()),
@@ -62,15 +71,21 @@ public class IntegratingWithExternalServices {
 
     public static void main(String[] args) {
 
-        final Source<PagerEvent, NotUsed> infraEvents = new IntegratingWithExternalServices().eventSource.filter(__ -> __.application.equals("AkkaInfra"));
+        new IntegratingWithExternalServices();
+        PagerService pagerService = new PagerService();
 
-        final Source<String, NotUsed> pagedEngineersEmails =
-                infraEvents.mapAsync(4, event -> new PagerService().processEvent(event));
+        final Source<PagerEvent, NotUsed> infraEvents = eventSource.filter(__ -> __.application.equals("AkkaInfra"));
+
+        final Source<String, NotUsed> pagedEngineersEmails = infraEvents.mapAsync(4, pagerService::processEvent);
+
         // guarantees the relative order of elements
         final Sink<String, CompletionStage<Done>> pagedEmailsSink =
-                Sink.<String>foreach(email -> println("Successfully sent notification to " + email))
+                Sink.<String>foreach(email -> LOGGER.debug("Successfully sent notification to " + email))
                         .withAttributes(ActorAttributes.dispatcher("dedicated-dispatcher"));
 
         pagedEngineersEmails.to(pagedEmailsSink).run(mat);
+
+        Await.await(2000, MILLIS);
+        system.terminate();
     }
 }

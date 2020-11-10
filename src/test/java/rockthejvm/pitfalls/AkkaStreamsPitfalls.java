@@ -87,7 +87,7 @@ public class AkkaStreamsPitfalls {
     @Test
     public void keepEverythingInTheFuture() {
         // If you want to process something in parallel, there is a good chance that you
-        // would usemapAsync. Good choice, just remember to put everything in the
+        // would use mapAsync. Good choice, just remember to put everything in the
         // Future. Otherwise you will end up with blocking code.
         Source.range(1, 5)
                 .mapAsync(5, i -> {
