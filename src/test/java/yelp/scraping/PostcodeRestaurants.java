@@ -8,9 +8,9 @@ public class PostcodeRestaurants {
     private String postcode;
     private List<JsonNode> restaurants;
 
-    public PostcodeRestaurants(String postcode, List<JsonNode> restaurants) {
+    public PostcodeRestaurants(String postcode, java.util.List<JsonNode> restaurants) {
         this.postcode = postcode;
-        this.restaurants = restaurants;
+        this.restaurants = List.ofAll(restaurants);
     }
 
     public String getPostcode() {

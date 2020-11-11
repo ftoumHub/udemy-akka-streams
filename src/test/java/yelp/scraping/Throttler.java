@@ -9,6 +9,11 @@ import java.time.Duration;
 
 import static io.vavr.API.println;
 
+/**
+ * Our throttler actor has two states: either open or closed. It will queue any request it receives
+ * while closed and release the queued requests when it opens. We encode those two states with
+ * two different Receive method and use context.become to switch between the two:
+ */
 public class Throttler extends AbstractActor {
 
     // messages received
@@ -66,13 +71,14 @@ public class Throttler extends AbstractActor {
 
     private void releaseWaiting() {
         waitQueue.forEach(actorRef -> actorRef.tell(MayPass.class, ActorRef.noSender()));
+        waitQueue = Queue.empty();
     }
 
     private void scheduleOpen() {
         getContext().getSystem()
                 .getScheduler()
                 .scheduleOnce(
-                        Duration.ofMinutes(30),
+                        Duration.ofMinutes(1),
                         () -> getSelf().tell(Open.class, ActorRef.noSender()),
                         getContext().getSystem().getDispatcher());
     }

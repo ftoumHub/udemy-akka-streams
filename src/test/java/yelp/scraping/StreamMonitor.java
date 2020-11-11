@@ -13,6 +13,11 @@ public class StreamMonitor {
 
     public static class ElementReceived {}
 
+    /**
+     * We can now define a flow stage that pushes its elements through unchanged,
+     * but notifies the <code>StreamMonitor</code> for every element.
+     * We will embed the flow definition in the StreamMonitor companion object:
+     */
     public static <T> Flow<T, T, NotUsed> monitor(Integer logEvery, Consumer<Integer> logMessage, ActorSystem system) {
         final ActorRef monitorActor = system.actorOf(StreamMonitorActor.props(logEvery, logMessage));
 
@@ -29,7 +34,7 @@ public class StreamMonitor {
         private final Integer logEvery;
         private final Consumer<Integer> logMessage;
 
-        public StreamMonitorActor(Integer logEvery, Consumer<Integer> logMessage) {
+        private StreamMonitorActor(Integer logEvery, Consumer<Integer> logMessage) {
             this.logEvery = logEvery;
             this.logMessage = logMessage;
         }
@@ -43,7 +48,9 @@ public class StreamMonitor {
             return receiveBuilder()
                     .match(ElementReceived.class, element -> {
                         numberElements += 1;
-                        if (numberElements % logEvery == 0) { logMessage.accept(numberElements); }
+                        if (numberElements % logEvery == 0) {
+                            logMessage.accept(numberElements);
+                        }
                     })
                     .build();
         }
