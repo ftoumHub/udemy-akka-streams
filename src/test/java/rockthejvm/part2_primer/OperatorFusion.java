@@ -21,7 +21,7 @@ public class OperatorFusion {
         final Source<Integer, NotUsed> simpleSource = Source.range(1, 1000);
         final Flow<Integer, Integer, NotUsed> simpleFlow = Flow.<Integer>create().map(__ -> __ + 1);
         final Flow<Integer, Integer, NotUsed> simpleFlow2 = Flow.<Integer>create().map(__ -> __ * 10);
-        final Sink<Integer, CompletionStage<Done>> simpleSink = Sink.<Integer>foreach(API::println);
+        final Sink<Integer, CompletionStage<Done>> simpleSink = Sink.foreach(API::println);
 
         // Si on connecte ces composants, on peut obtenir le graphe suivant :
         // Les composants d'akka streams sont basés sur le principe des acteurs

@@ -124,11 +124,11 @@ public class FirstPrinciples {
     @Test
     public void sinks() {
         final Sink<Object, CompletionStage<Done>> theMostBoringSink = Sink.ignore();
-        final Sink<String, CompletionStage<Done>> foreachSink = Sink.<String>foreach(API::println);
+        final Sink<String, CompletionStage<Done>> foreachSink = Sink.foreach(API::println);
         // retrieves head and then closes the stream
-        final Sink<Integer, CompletionStage<Integer>> headSink = Sink.<Integer>head();
+        final Sink<Integer, CompletionStage<Integer>> headSink = Sink.head();
         // this sink is able to compute the sum of all the elements that are passed into it.
-        final Sink<Integer, CompletionStage<Integer>> foldSink = Sink.<Integer, Integer>fold(0, (a, b) -> a + b);
+        final Sink<Integer, CompletionStage<Integer>> foldSink = Sink.fold(0, (a, b) -> a + b);
     }
 
     @Test

@@ -18,6 +18,8 @@ import static io.vavr.API.*;
 import static io.vavr.Patterns.$Failure;
 import static io.vavr.Patterns.$Success;
 import static io.vavr.concurrent.Future.fromCompletableFuture;
+import static java.time.temporal.ChronoUnit.MILLIS;
+import static libs.Await.await;
 
 /**
  * <h1>Materializing Streams</h1>
@@ -68,7 +70,7 @@ public class MaterializingStreams {
     public void firstMaterializedValue() {
         final Source<Integer, NotUsed> source = Source.range(1, 10);
         // Une fois que ce sink aura fini, il exposera une future de integer representant la somme des éléments
-        final Sink<Integer, CompletionStage<Integer>> sink = Sink.reduce((a, b) -> a + b);
+        final Sink<Integer, CompletionStage<Integer>> sink = Sink.reduce(Integer::sum);
         // En exécutant le graphe, on va avoir accès à la somme des éléments calculés par le sink
         final CompletionStage<Integer> sumFuture = source.runWith(sink, mat);
 
@@ -78,6 +80,8 @@ public class MaterializingStreams {
                     Case($Failure($()), ex  -> run(() -> println("The sum of all elements could not be computed: " + ex)))
             )
         );
+
+        await(1500, MILLIS);
     }
 
     @Test
@@ -103,13 +107,15 @@ public class MaterializingStreams {
                         Case($Failure($()), ex  -> run(() -> println("stream processing failed with: " + ex)))
                 )
         );
+
+        await(1500, MILLIS);
     }
 
     public void sugars() {
         // On peut s'épargner d'utiliser le Keep.right() avec runWith qui équivaut à : toMat(sink)(Keep.right).run()
-        final CompletionStage<Integer> sum1 = Source.range(1, 10).runWith(Sink.reduce((a, b) -> a + b), mat);
+        final CompletionStage<Integer> sum1 = Source.range(1, 10).runWith(Sink.reduce(Integer::sum), mat);
         // Ou encore
-        final CompletionStage<Integer> sum2 = Source.range(1, 10).runReduce((a, b) -> a + b, mat);
+        final CompletionStage<Integer> sum2 = Source.range(1, 10).runReduce(Integer::sum, mat);
 
         // Au lieu d'utiliser la syntaxe: source(..).to(sink...).run()
         // qui par défaut retourne la valeur matérialisée de la source, on peut écrire :

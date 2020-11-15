@@ -52,27 +52,24 @@ public class TestingStreamsSpec {
 
     @Test
     public void simpleStream() {
-        final Source<Integer, NotUsed> simpleSource = Source.range(0, 10);
-
         // Ce sink va additionner les valeurs qui lui sont passé.
         // Lorsqu'il est matérialisé, il expose son resultat sous forme d'un CompletionStage de Integer
         final Sink<Integer, CompletionStage<Integer>> simpleSink = Sink.fold(0, Integer::sum);
 
-        int result = simpleSource.log("SimpleSource")
-                .toMat(simpleSink, Keep.right()).run(mat)
-                .toCompletableFuture().join();
+        int result = Source.range(0, 10)
+                        .log("SimpleSource")
+                        .toMat(simpleSink, Keep.right()).run(mat)
+                        .toCompletableFuture().join();
         assertEquals(55, result);
     }
 
     @Test
     public void integrateWithTestActorsViaMaterializedValues() {
-
-        final Source<Integer, NotUsed> simpleSource = Source.range(0, 10);
-        final Sink<Integer, CompletionStage<Integer>> simpleSink = Sink.fold(0, Integer::sum);
-
         probe = new TestKit(system); // Acteur spécial avec des capacités de test
 
-        final CompletionStage<Integer> future = simpleSource.toMat(simpleSink, Keep.right()).run(mat);
+        final Sink<Integer, CompletionStage<Integer>> sumSink = Sink.fold(0, Integer::sum);
+
+        final CompletionStage<Integer> future = Source.range(0, 10).toMat(sumSink, Keep.right()).run(mat);
 
         akka.pattern.Patterns.pipe(toScala(future), system.dispatcher()).to(probe.getRef());
         probe.expectMsg(55);
@@ -81,10 +78,11 @@ public class TestingStreamsSpec {
     @Test
     public void integrateWithATestActorBasedSink() {
         probe = new TestKit(system); // Acteur spécial avec des capacités de test
-        final Source<Integer, NotUsed> simpleSource = Source.range(0, 10);
+
         final Flow<Integer, Integer, NotUsed> flow = // 0, 1, 3, 6, 10, 15
                 Flow.<Integer>create().scan(0, Integer::sum);
-        final Source<Integer, NotUsed> streamUnderTest = simpleSource.via(flow);
+
+        final Source<Integer, NotUsed> streamUnderTest = Source.range(0, 10).via(flow);
 
         final Sink<Integer, NotUsed> probeSink = Sink.actorRef(probe.getRef(), "CompletionMessage");
         streamUnderTest
@@ -127,7 +125,7 @@ public class TestingStreamsSpec {
         fromCompletableFuture(materialized.second().toCompletableFuture()).onComplete(__ ->
                 Match(__).of(
                         Case($Success($()), ___ -> run(() -> fail("the sink under test should have thrown an exception on 13"))),
-                        Case($Failure($()), ___  -> __)
+                        Case($Failure($()), ___ -> __)
                 )
         );
     }
