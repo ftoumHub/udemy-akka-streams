@@ -11,7 +11,7 @@
     <properties>
         <java.version>9</java.version>
         <akka.version>2.5.23</akka.version>
-        <junit.version>4.12</junit.version>
+        <junit.version>4.13.1</junit.version>
     </properties>
 
     <dependencies>
