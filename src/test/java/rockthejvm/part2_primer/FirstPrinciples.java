@@ -54,15 +54,16 @@ public class FirstPrinciples {
     }
 
     @Test
-    public void sourceFlatMapConcat() throws InterruptedException {
+    public void sourceFlatMapConcat() {
         // On a 2 sources:
-        final Source<Integer, NotUsed> source1 = Source.range(1, 3);
-        final Source<Integer, NotUsed> source2 = Source.range(1, 10);
+        final Source<Integer, NotUsed> src1 = Source.range(1, 3);
+        final Source<Integer, NotUsed> src2 = Source.range(1, 10);
 
         final Sink<Integer, CompletionStage<Done>> sink = Sink.foreach(API::println);
 
-        // Pour chaque element de source1 on émet source2
-        source1.flatMapConcat(i -> source2).to(sink).run(mat);
+        // Pour chaque element de src1 on émet src2
+        final Source<Integer, NotUsed> flatMappedSources = src1.flatMapConcat(i -> src2);
+        flatMappedSources.to(sink).run(mat);
 
         await(500, MILLIS);
     }

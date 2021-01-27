@@ -53,6 +53,13 @@ public class Flows {
         return Flow.<T>create().map(List::of);
     }
 
+    /**
+     * Ce flow permet de paralleliser le traitement d'un flow 'worker' dans le cas ou celui-ci prend du temps.
+     * Une fois l'appel effectué, le résultat est mergé pour restituer un flow équivalent au paramètre 'worker'.
+     *
+     * L'utilisation de l'algorithme MurmurHash3 permet de s'assurer que les messages de type 'In' ayant le même id
+     * seront traités séquentiellement par un même acteur.
+     */
     public static <In, Out> Flow<In, Out, NotUsed> shard(Integer parallelism, Function<In, String> getId, Flow<In, Out, NotUsed> worker) {
         return Flow.fromGraph(
                 GraphDSL.create(

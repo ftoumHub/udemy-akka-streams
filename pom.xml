@@ -10,7 +10,7 @@
 
     <properties>
         <java.version>9</java.version>
-        <akka.version>2.5.16</akka.version>
+        <akka.version>2.5.23</akka.version>
         <junit.version>4.12</junit.version>
     </properties>
 
@@ -53,6 +53,11 @@
             <artifactId>vavr</artifactId>
             <version>0.9.3</version>
         </dependency>
+        <dependency>
+            <groupId>io.vavr</groupId>
+            <artifactId>vavr-jackson</artifactId>
+            <version>0.9.3</version>
+        </dependency>
 
         <dependency>
             <groupId>com.typesafe.play</groupId>
@@ -93,11 +98,27 @@
             <artifactId>logback-classic</artifactId>
             <version>1.0.13</version>
         </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <version>2.9.8</version>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-annotations</artifactId>
+            <version>2.9.0</version>
+        </dependency>
 
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
             <version>${junit.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.assertj</groupId>
+            <artifactId>assertj-core</artifactId>
+            <version>3.10.0</version>
             <scope>test</scope>
         </dependency>
     </dependencies>

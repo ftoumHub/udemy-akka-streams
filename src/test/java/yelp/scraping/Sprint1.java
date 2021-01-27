@@ -60,11 +60,13 @@ public class Sprint1 {
                     return new PostcodeRestaurants(postcode, restaurants);
                 })
                 .runForeach(pR -> println(pR.getRestaurants()), mat)
-                .whenComplete((d, t) -> println("Done"));
+                .whenComplete((d, t) -> {
+                    println("Done");
+                    system.terminate();
+                });
 
         Thread.sleep(10000); // give the stream time to run
 
         ws.close();
-        system.terminate();
     }
 }

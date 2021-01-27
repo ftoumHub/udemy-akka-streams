@@ -142,7 +142,7 @@ public class Sprint6 {
                         .via(throttlerNotifier(throttler))
                         .via(StreamMonitor.monitor(5, count -> printf("Processed %s restaurants\n", count), system))
                         .via(errorLogger)
-                        //.via(errorLimiter)
+                        .via(errorLimiter)
                         .filter(postcodeWithResp -> postcodeWithResp._2.getStatus() == 200)
                         .map(successfulResp -> {
                             final List<JsonNode> restaurants = YelpApi.parseSuccessfulResponse(successfulResp._1, successfulResp._2);

@@ -22,7 +22,8 @@ public class Substreams {
         final Source<String, NotUsed> wordsSource = Source.from(List("Akka", "is", "amazing", "learning", "substreams"));
         // la fonction de groupement prend une string et retourne une clé qui sera utilisé afin de décider
         // de quel sous stream cet élément fera partie
-        final SubSource<String, NotUsed> groups = wordsSource.groupBy(30, word -> isEmpty(word) ? "\0" : word.toLowerCase().charAt(0));
+        final SubSource<String, NotUsed> groups = wordsSource
+                .groupBy(30, word -> isEmpty(word) ? "\0" : word.toLowerCase().charAt(0));
 
         groups.to(Sink.fold(0, (count, word) -> {
             final int newCount = count + 1;
