@@ -17,6 +17,7 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
 
+import java.util.Arrays;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
@@ -64,6 +65,37 @@ public class FirstPrinciples {
         // Pour chaque element de src1 on émet src2
         final Source<Integer, NotUsed> flatMappedSources = src1.flatMapConcat(i -> src2);
         flatMappedSources.to(sink).run(mat);
+
+        await(500, MILLIS);
+    }
+
+    @Test
+    public void flatMapConcatVsFlatMapMerge() {
+        //final List<String> alphabet = List("A","B","C","D","E","F","G","H","I","J","K","L","M","N","O","P","Q","R","S","T","U","V","W","X","Y","Z");
+        final List<String> alphabet = List("A","B","C","D","E");
+
+        println("========== FlatMapConcat ==========");
+        Source.from(alphabet)
+                .flatMapConcat(letter -> {
+                    println(letter);
+                    return Source.range(1, alphabet.indexOf(letter) + 1);
+                })
+                .to(Sink.foreach(API::println))
+                .run(mat);
+
+        await(500, MILLIS);
+
+        // pb, si un des sous stream est infini, on ne passe jamais à l'élément suivant de la première source.
+        // Avec flatMapMerge, les sous streams sont exécutés en parallèle avec un facteur de parallélisation.
+
+        println("========== FlatMapMerge ==========");
+        Source.from(alphabet)
+                .flatMapMerge(2, letter -> {
+                    println(letter);
+                    return Source.range(1, alphabet.indexOf(letter) + 1);
+                })
+                .to(Sink.foreach(API::println))
+                .run(mat);
 
         await(500, MILLIS);
     }
