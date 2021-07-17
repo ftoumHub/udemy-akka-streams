@@ -6,11 +6,14 @@ import akka.stream.ActorMaterializer;
 import akka.stream.javadsl.RestartSource;
 import akka.stream.javadsl.Sink;
 import akka.stream.javadsl.Source;
+import io.vavr.API;
 import io.vavr.collection.List;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import static io.vavr.API.println;
 
 public class GestionErreursEtRetry {
 
@@ -28,7 +31,7 @@ public class GestionErreursEtRetry {
                             0,
                             3,
                             () -> {
-                                System.out.println("gererLeMessage "+msg+" - "+counter.get()+" - "+ LocalDateTime.now());
+                                println("gererLeMessage "+msg+" - "+counter.get()+" - "+ LocalDateTime.now());
                                 return gererLeMessage(msg, counter.incrementAndGet());
                             }
                     ).recover(Exception.class, () -> "Default String");
@@ -46,11 +49,11 @@ public class GestionErreursEtRetry {
                             if (e != null) {
                                 e.printStackTrace();
                             } else {
-                                System.out.println("Done");
+                                println("Done");
                             }
                         })
                 )
-                .runWith(Sink.foreach(System.out::println), ActorMaterializer.create(actorSystem));
+                .runWith(Sink.foreach(API::println), ActorMaterializer.create(actorSystem));
 
     }
 

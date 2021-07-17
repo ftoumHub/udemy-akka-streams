@@ -17,13 +17,13 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
 
-import java.util.Arrays;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
 import static io.vavr.API.List;
 import static io.vavr.API.println;
 import static java.time.temporal.ChronoUnit.MILLIS;
+import static java.util.Objects.nonNull;
 import static libs.Await.await;
 
 public class FirstPrinciples {
@@ -103,12 +103,31 @@ public class FirstPrinciples {
     @Test
     public void sourceConcat() {
 
-        final Source<Integer, NotUsed> deux = Source.single(2);
+        final Source<Integer, NotUsed> unDeux = Source.from(List.of(1, 2));
         final Source<Integer, NotUsed> trois = Source.single(3);
 
         final Sink<Integer, CompletionStage<Done>> sink = Sink.foreach(API::println);
 
-        deux.concat(trois).to(sink).run(mat);
+        unDeux.concat(trois)
+                .watchTermination((nu, whenDone) ->
+                        whenDone.whenComplete((d, e) -> {
+                            if (nonNull(e)) e.printStackTrace();
+                            else println("concat step done");
+                        })
+                )
+                .map(i -> i * 2)
+                .watchTermination((nu, whenDone) ->
+                        whenDone.whenComplete((d, e) -> {
+                            if (nonNull(e)) e.printStackTrace();
+                            else println("map step done");
+                        })
+                )
+                .to(sink)
+                .run(mat)
+        .whenComplete((d, e) -> {
+            if (nonNull(e)) e.printStackTrace();
+            else println("End Source");
+        });
 
         await(500, MILLIS);
     }

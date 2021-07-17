@@ -12,7 +12,7 @@ import static io.vavr.API.List;
 import static io.vavr.API.printf;
 import static org.apache.commons.lang3.StringUtils.isEmpty;
 
-public class Substreams {
+public class B_Substreams {
 
     static ActorSystem system = ActorSystem.create("Substreams");
     static ActorMaterializer mat = ActorMaterializer.create(system);

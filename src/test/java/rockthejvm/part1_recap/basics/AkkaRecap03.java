@@ -1,4 +1,4 @@
-package rockthejvm.part1_recap;
+package rockthejvm.part1_recap.basics;
 
 import akka.actor.AbstractActor;
 import akka.actor.ActorRef;
